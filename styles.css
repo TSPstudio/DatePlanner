@@ -156,18 +156,10 @@ body {
 .nav-brand {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
   font-weight: 700;
   font-size: 1.2rem;
   color: var(--text-primary);
   letter-spacing: 0.5px;
-}
-
-.brand-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--accent);
 }
 
 .nav-actions {
@@ -381,12 +373,12 @@ body {
   align-items: center;
   justify-content: center;
   margin-bottom: 0.75rem;
-  animation: pulseRotate 4s ease-in-out infinite;
+  animation: slowSpin 14s linear infinite;
 }
 
-@keyframes pulseRotate {
-  0%, 100% { transform: scale(1) rotate(0deg); }
-  50% { transform: scale(1.1) rotate(6deg); }
+@keyframes slowSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .btn-roll {
@@ -424,6 +416,9 @@ body {
   background: rgba(30, 22, 48, 0.85);
   border: 1px solid var(--accent-soft);
   animation: revealUp 0.4s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 @keyframes revealUp {
@@ -436,39 +431,19 @@ body {
   font-size: 1.3rem;
   color: var(--accent);
   margin-bottom: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
 }
 
 .rolled-title {
   font-family: var(--font-display);
   font-size: 1.8rem;
   color: #fff;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.35rem;
 }
 
-.rolled-meta {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.meta-tag {
-  font-size: 0.8rem;
-  padding: 0.25rem 0.65rem;
-  border-radius: 999px;
-  background: rgba(244, 143, 177, 0.15);
+.rolled-subtitle {
+  font-size: 0.95rem;
   color: var(--text-secondary);
-}
-
-.cooldown-tag {
-  background: rgba(255, 167, 38, 0.18);
-  color: var(--warning);
-  border: 1px solid rgba(255, 167, 38, 0.3);
+  margin-bottom: 0.25rem;
 }
 
 .add-card {

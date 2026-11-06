@@ -243,7 +243,7 @@ async function handleRollDate(env: Env): Promise<Response> {
   if (available.length === 0) {
     return jsonResponse({
       status: "empty",
-      message: "All dates are currently on a 2-week cooldown! You can free one from the waitlist below.",
+      message: "All dates are on cooldown!",
     }, HTTP_OK);
   }
 

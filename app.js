@@ -271,10 +271,8 @@ function displayRolledDate(date) {
   const resultCard = document.getElementById("roll-result-card");
   const titleEl = document.getElementById("rolled-title");
   const creatorEl = document.getElementById("rolled-creator");
-  const cooldownEl = document.getElementById("rolled-cooldown");
   titleEl.textContent = date.title;
   creatorEl.textContent = `Suggested by ${date.creator}`;
-  cooldownEl.textContent = "Cooldown active (14 days)";
   resultCard.classList.remove("hidden");
   showToast("Date rolled! Have fun!");
 }
