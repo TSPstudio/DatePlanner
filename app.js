@@ -3,6 +3,7 @@ const STORAGE_KEY_USER = "dateplanner_user";
 const STORAGE_KEY_LANG = "dateplanner_lang";
 const WORKER_API_URL = "https://date-planner-api.mdm-tracker-backend.workers.dev";
 const TOAST_DURATION_MS = 3500;
+const AUTO_REFRESH_INTERVAL_MS = 6000;
 const PARTICLE_COUNT_DESKTOP = 22;
 const PARTICLE_COUNT_MOBILE = 14;
 const MOBILE_BREAKPOINT = 640;
@@ -53,6 +54,10 @@ const TRANSLATIONS = {
     emptyAvailable: "No date plans available yet. Add some above!",
     waitlist: "Waitlist",
     emptyWaitlist: "No dates on cooldown right now.",
+    lastDatePlan: "Last Date Plan",
+    emptyLastPlan: "No date plan rolled yet.",
+    lastRolled: "Last rolled",
+    latestAdded: "Latest added",
     ready: "Ready",
     left: "left",
     by: "By",
@@ -92,6 +97,10 @@ const TRANSLATIONS = {
     emptyAvailable: "Aún no hay planes disponibles. ¡Agrega uno arriba!",
     waitlist: "Lista de Espera",
     emptyWaitlist: "No hay planes en espera en este momento.",
+    lastDatePlan: "Último Plan de Cita",
+    emptyLastPlan: "Aún no se ha elegido ningún plan.",
+    lastRolled: "Última elección",
+    latestAdded: "Último agregado",
     ready: "Listo",
     left: "restantes",
     by: "Por",
@@ -113,6 +122,7 @@ const TRANSLATIONS = {
 const TRASH_ICON_SVG = '<svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
 
 let currentRolledDate = null;
+let autoRefreshTimer = null;
 
 function getLang() {
   return localStorage.getItem(STORAGE_KEY_LANG) || "en";
@@ -148,7 +158,7 @@ function applyStaticTranslations() {
 function applyTranslations() {
   applyStaticTranslations();
   updateLangToggleUi();
-  if (getToken()) loadDates();
+  if (getToken()) loadDates(true);
 }
 
 function toggleLang() {
@@ -248,6 +258,22 @@ function formatRemainingTime(ms) {
   return `${hours}h ${t("left")}`;
 }
 
+function startAutoRefresh() {
+  stopAutoRefresh();
+  autoRefreshTimer = setInterval(() => {
+    if (!document.hidden && getToken()) {
+      loadDates(true);
+    }
+  }, AUTO_REFRESH_INTERVAL_MS);
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+}
+
 function updateUiState() {
   const token = getToken();
   const user = getStoredUser();
@@ -263,12 +289,14 @@ function updateUiState() {
     userBadge.classList.remove("hidden");
     btnLogout.classList.remove("hidden");
     userNameDisplay.textContent = user;
-    loadDates();
+    loadDates(false);
+    startAutoRefresh();
   } else {
     loginSection.classList.remove("hidden");
     appSection.classList.add("hidden");
     userBadge.classList.add("hidden");
     btnLogout.classList.add("hidden");
+    stopAutoRefresh();
   }
 }
 
@@ -298,18 +326,22 @@ async function handleLoginSubmit(event) {
 }
 
 function handleLogout() {
+  stopAutoRefresh();
   clearSession();
   updateUiState();
   showToast(t("loggedOut"));
 }
 
-async function loadDates() {
+async function loadDates(isSilent = false) {
   try {
     const data = await apiRequest("/api/dates");
     renderAvailableList(data.available || []);
     renderCooldownList(data.coolingDown || []);
+    renderLastPlan(data.lastRolled || data.latestPlan || null);
   } catch (err) {
-    showToast(`Could not load dates: ${err.message}`);
+    if (!isSilent) {
+      showToast(`Could not load dates: ${err.message}`);
+    }
   }
 }
 
@@ -375,6 +407,28 @@ function renderCooldownList(items) {
   });
 }
 
+function renderLastPlan(item) {
+  const container = document.getElementById("last-plan-content");
+  if (!container) return;
+  if (!item) {
+    container.innerHTML = `<p class="empty-state">${escapeHtml(t("emptyLastPlan"))}</p>`;
+    return;
+  }
+  const tagText = item.roll_count > 0 ? t("lastRolled") : t("latestAdded");
+  container.innerHTML = `
+    <div class="last-plan-body">
+      <div class="item-content">
+        <h4 class="last-plan-title">${escapeHtml(item.title)}</h4>
+        <div class="last-plan-sub">
+          <span>${escapeHtml(t("by"))} ${escapeHtml(item.creator)}</span>
+          <span>• ${escapeHtml(tagText)}</span>
+          <span>• ${escapeHtml(t("rolledTimes"))} ${item.roll_count} ${escapeHtml(t("times"))}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 async function handleRollDate() {
   const rollButton = document.getElementById("btn-roll-date");
   rollButton.disabled = true;
@@ -385,7 +439,7 @@ async function handleRollDate() {
       return;
     }
     displayRolledDate(res.date);
-    await loadDates();
+    await loadDates(true);
   } catch (err) {
     showToast(`Roll failed: ${err.message}`);
   } finally {
@@ -416,7 +470,7 @@ async function releaseDate(id) {
   try {
     await apiRequest(`/api/dates/${id}/reset-cooldown`, { method: "POST" });
     showToast(t("dateReleased"));
-    await loadDates();
+    await loadDates(true);
   } catch (err) {
     showToast(`Could not release date: ${err.message}`);
   }
@@ -427,7 +481,7 @@ async function deleteDate(id) {
   try {
     await apiRequest(`/api/dates/${id}`, { method: "DELETE" });
     showToast(t("dateRemoved"));
-    await loadDates();
+    await loadDates(true);
   } catch (err) {
     showToast(`Could not delete date: ${err.message}`);
   }
@@ -446,7 +500,7 @@ async function handleAddDateSubmit(event) {
     });
     titleInput.value = "";
     showToast(t("datePlanAdded"));
-    await loadDates();
+    await loadDates(true);
   } catch (err) {
     showToast(`Could not add date plan: ${err.message}`);
   }
@@ -458,6 +512,12 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function handleVisibilityChange() {
+  if (!document.hidden && getToken()) {
+    loadDates(true);
+  }
+}
+
 function initEventHandlers() {
   document.getElementById("btn-lang-toggle").addEventListener("click", toggleLang);
   document.getElementById("login-form").addEventListener("submit", handleLoginSubmit);
@@ -465,6 +525,7 @@ function initEventHandlers() {
   document.getElementById("btn-roll-date").addEventListener("click", handleRollDate);
   document.getElementById("btn-quick-release").addEventListener("click", handleQuickRelease);
   document.getElementById("add-date-form").addEventListener("submit", handleAddDateSubmit);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
 }
 
 document.addEventListener("DOMContentLoaded", () => {

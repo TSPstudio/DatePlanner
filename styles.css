@@ -592,6 +592,48 @@ body {
   border-radius: 4px;
 }
 
+.last-plan-card {
+  padding: 1.5rem;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 8px rgba(102, 187, 106, 0.8);
+  animation: pulseDot 2s infinite ease-in-out;
+  display: inline-block;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.last-plan-body {
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-sm);
+  background: rgba(26, 18, 32, 0.6);
+  border: 1px solid rgba(244, 143, 177, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.last-plan-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: #fff;
+  margin-bottom: 0.2rem;
+}
+
+.last-plan-sub {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
 .toast-container {
   position: fixed;
   bottom: 1.5rem;

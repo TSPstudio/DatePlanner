@@ -24,6 +24,7 @@ export interface DateItem {
   created_at: number;
   cooldown_until: number | null;
   roll_count: number;
+  last_rolled_at: number | null;
   remaining_ms?: number;
 }
 
@@ -214,12 +215,13 @@ async function extractAuthUser(request: Request, env: Env): Promise<AuthUser | n
 async function handleGetDates(env: Env, pairId: string): Promise<Response> {
   const now = Date.now();
   const result = await env.DB.prepare(
-    "SELECT id, pair_id, title, creator, created_at, cooldown_until, roll_count FROM dates WHERE pair_id = ? ORDER BY created_at DESC"
+    "SELECT id, pair_id, title, creator, created_at, cooldown_until, roll_count, last_rolled_at FROM dates WHERE pair_id = ? ORDER BY created_at DESC"
   ).bind(pairId).all<DateItem>();
 
   const allItems = result.results || [];
   const available: DateItem[] = [];
   const coolingDown: DateItem[] = [];
+  let lastRolled: DateItem | null = null;
 
   for (const item of allItems) {
     if (item.cooldown_until && item.cooldown_until > now) {
@@ -230,9 +232,20 @@ async function handleGetDates(env: Env, pairId: string): Promise<Response> {
     } else {
       available.push(item);
     }
+    if (item.last_rolled_at) {
+      if (!lastRolled || item.last_rolled_at > (lastRolled.last_rolled_at || 0)) {
+        lastRolled = item;
+      }
+    }
   }
 
-  return jsonResponse({ available, coolingDown, total: allItems.length });
+  return jsonResponse({
+    available,
+    coolingDown,
+    total: allItems.length,
+    lastRolled,
+    latestPlan: allItems[0] || null,
+  });
 }
 
 async function handleCreateDate(request: Request, env: Env, user: AuthUser): Promise<Response> {
@@ -247,7 +260,7 @@ async function handleCreateDate(request: Request, env: Env, user: AuthUser): Pro
     const createdAt = Date.now();
 
     await env.DB.prepare(
-      "INSERT INTO dates (id, pair_id, title, creator, created_at, cooldown_until, roll_count) VALUES (?, ?, ?, ?, ?, NULL, 0)"
+      "INSERT INTO dates (id, pair_id, title, creator, created_at, cooldown_until, roll_count, last_rolled_at) VALUES (?, ?, ?, ?, ?, NULL, 0, NULL)"
     ).bind(id, user.pairId, title, creator, createdAt).run();
 
     return jsonResponse({
@@ -258,6 +271,7 @@ async function handleCreateDate(request: Request, env: Env, user: AuthUser): Pro
       created_at: createdAt,
       cooldown_until: null,
       roll_count: 0,
+      last_rolled_at: null,
     }, HTTP_CREATED);
   } catch (err) {
     return jsonResponse({ error: "Failed to create date plan" }, HTTP_INTERNAL_ERROR);
@@ -273,7 +287,7 @@ function getRandomIndex(max: number): number {
 async function handleRollDate(env: Env, pairId: string): Promise<Response> {
   const now = Date.now();
   const availableResult = await env.DB.prepare(
-    "SELECT id, pair_id, title, creator, created_at, cooldown_until, roll_count FROM dates WHERE pair_id = ? AND (cooldown_until IS NULL OR cooldown_until <= ?)"
+    "SELECT id, pair_id, title, creator, created_at, cooldown_until, roll_count, last_rolled_at FROM dates WHERE pair_id = ? AND (cooldown_until IS NULL OR cooldown_until <= ?)"
   ).bind(pairId, now).all<DateItem>();
 
   const available = availableResult.results || [];
@@ -290,8 +304,8 @@ async function handleRollDate(env: Env, pairId: string): Promise<Response> {
   const newRollCount = selected.roll_count + 1;
 
   await env.DB.prepare(
-    "UPDATE dates SET cooldown_until = ?, roll_count = ? WHERE id = ? AND pair_id = ?"
-  ).bind(cooldownUntil, newRollCount, selected.id, pairId).run();
+    "UPDATE dates SET cooldown_until = ?, roll_count = ?, last_rolled_at = ? WHERE id = ? AND pair_id = ?"
+  ).bind(cooldownUntil, newRollCount, now, selected.id, pairId).run();
 
   return jsonResponse({
     status: "rolled",
@@ -299,6 +313,7 @@ async function handleRollDate(env: Env, pairId: string): Promise<Response> {
       ...selected,
       cooldown_until: cooldownUntil,
       roll_count: newRollCount,
+      last_rolled_at: now,
       remaining_ms: COOLDOWN_MS,
     },
   });
