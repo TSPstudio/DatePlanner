@@ -75,7 +75,7 @@ const TRANSLATIONS = {
     sessionExpired: "Session expired. Please log in again.",
   },
   es: {
-    brandTitle: "Nuestro Planificador",
+    brandTitle: "Planificador de Citas",
     logOut: "Cerrar sesión",
     privateSpace: "Espacio Privado",
     loginSubtitle: "Inicia sesión para gestionar nuestros planes",
@@ -84,14 +84,14 @@ const TRANSLATIONS = {
     passwordLabel: "Contraseña",
     passwordPh: "Ingresa tu contraseña",
     enterPlanner: "Entrar al Planificador",
-    whatShouldWeDo: "¿Qué hacemos hoy?",
+    whatShouldWeDo: "¿Qué haremos hoy?",
     rollDate: "¡Elegir un Plan!",
     todaysAdventure: "Aventura de Hoy",
     suggestedBy: "Sugerido por",
-    releaseWaitlistNow: "Liberar de la lista de espera",
-    addDateIdea: "Agregar Nueva Idea",
+    releaseWaitlistNow: "Quitar de la lista de espera",
+    addDateIdea: "Agregar nuevo plan",
     datePlanLabel: "Plan de Cita",
-    datePlanPh: "ej. Picnic bajo las estrellas con fresas...",
+    datePlanPh: "ej. Ver una peli de chill...",
     addToPlans: "Agregar a Planes",
     availableDates: "Planes Disponibles",
     emptyAvailable: "Aún no hay planes disponibles. ¡Agrega uno arriba!",
@@ -337,7 +337,7 @@ async function loadDates(isSilent = false) {
     const data = await apiRequest("/api/dates");
     renderAvailableList(data.available || []);
     renderCooldownList(data.coolingDown || []);
-    renderLastPlan(data.lastRolled || data.latestPlan || null);
+    renderLastPlan(data.lastRolled || null);
   } catch (err) {
     if (!isSilent) {
       showToast(`Could not load dates: ${err.message}`);
@@ -414,14 +414,12 @@ function renderLastPlan(item) {
     container.innerHTML = `<p class="empty-state">${escapeHtml(t("emptyLastPlan"))}</p>`;
     return;
   }
-  const tagText = item.roll_count > 0 ? t("lastRolled") : t("latestAdded");
   container.innerHTML = `
     <div class="last-plan-body">
       <div class="item-content">
         <h4 class="last-plan-title">${escapeHtml(item.title)}</h4>
         <div class="last-plan-sub">
           <span>${escapeHtml(t("by"))} ${escapeHtml(item.creator)}</span>
-          <span>• ${escapeHtml(tagText)}</span>
           <span>• ${escapeHtml(t("rolledTimes"))} ${item.roll_count} ${escapeHtml(t("times"))}</span>
         </div>
       </div>

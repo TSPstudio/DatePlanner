@@ -232,9 +232,11 @@ async function handleGetDates(env: Env, pairId: string): Promise<Response> {
     } else {
       available.push(item);
     }
-    if (item.last_rolled_at) {
-      if (!lastRolled || item.last_rolled_at > (lastRolled.last_rolled_at || 0)) {
-        lastRolled = item;
+    const rolledTime = item.last_rolled_at || (item.cooldown_until ? item.cooldown_until - COOLDOWN_MS : 0);
+    if (rolledTime > 0) {
+      const currentBest = lastRolled?.last_rolled_at || 0;
+      if (!lastRolled || rolledTime > currentBest) {
+        lastRolled = { ...item, last_rolled_at: rolledTime };
       }
     }
   }
