@@ -1,24 +1,17 @@
 const STORAGE_KEY_TOKEN = "dateplanner_token";
 const STORAGE_KEY_USER = "dateplanner_user";
-const STORAGE_KEY_WORKER_URL = "dateplanner_worker_url";
-const DEFAULT_WORKER_URL = "https://date-planner-api.mdm-tracker-backend.workers.dev";
+const WORKER_API_URL = "https://date-planner-api.mdm-tracker-backend.workers.dev";
 const TOAST_DURATION_MS = 3500;
 const PARTICLE_COUNT_DESKTOP = 20;
 const PARTICLE_COUNT_MOBILE = 12;
 const MOBILE_BREAKPOINT = 640;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MS_PER_HOUR = 60 * 60 * 1000;
+const ANIMATION_MIN_DURATION_S = 18;
+const ANIMATION_VAR_DURATION_S = 18;
+const ANIMATION_MAX_DELAY_S = 25;
 
 let currentRolledDate = null;
-
-function getWorkerUrl() {
-  return localStorage.getItem(STORAGE_KEY_WORKER_URL) || DEFAULT_WORKER_URL;
-}
-
-function setWorkerUrl(url) {
-  const sanitized = url.replace(/\/+$/, "");
-  localStorage.setItem(STORAGE_KEY_WORKER_URL, sanitized);
-}
 
 function getToken() {
   return sessionStorage.getItem(STORAGE_KEY_TOKEN);
@@ -53,6 +46,7 @@ function showToast(message) {
 function createFloatingParticles() {
   const container = document.getElementById("floating-bg");
   if (!container) return;
+  container.innerHTML = "";
   const symbols = ["🌸", "💕", "✿", "♡", "🌷", "✦", "🩷", "💮", "✨", "🌹"];
   const count = window.innerWidth < MOBILE_BREAKPOINT ? PARTICLE_COUNT_MOBILE : PARTICLE_COUNT_DESKTOP;
   for (let i = 0; i < count; i++) {
@@ -60,8 +54,9 @@ function createFloatingParticles() {
     el.className = "float-particle";
     el.textContent = symbols[i % symbols.length];
     el.style.left = `${Math.random() * 100}%`;
-    el.style.animationDuration = `${18 + Math.random() * 22}s`;
-    el.style.animationDelay = `${Math.random() * 20}s`;
+    const duration = ANIMATION_MIN_DURATION_S + Math.random() * ANIMATION_VAR_DURATION_S;
+    el.style.animationDuration = `${duration}s`;
+    el.style.animationDelay = `-${Math.random() * ANIMATION_MAX_DELAY_S}s`;
     el.style.fontSize = `${0.8 + Math.random() * 1.2}rem`;
     container.appendChild(el);
   }
@@ -74,7 +69,7 @@ async function apiRequest(endpoint, options = {}) {
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
-  const url = `${getWorkerUrl()}${endpoint}`;
+  const url = `${WORKER_API_URL}${endpoint}`;
   const response = await fetch(url, { ...options, headers });
   if (response.status === 401) {
     clearSession();
@@ -148,7 +143,7 @@ async function handleLoginSubmit(event) {
 function handleLogout() {
   clearSession();
   updateUiState();
-  showToast("Logged out safely.");
+  showToast("Logged out");
 }
 
 async function loadDates() {
@@ -282,9 +277,8 @@ async function deleteDate(id) {
 async function handleAddDateSubmit(event) {
   event.preventDefault();
   const titleInput = document.getElementById("new-date-title");
-  const creatorInput = document.getElementById("new-date-creator");
   const title = titleInput.value.trim();
-  const creator = creatorInput.value.trim() || getStoredUser() || "Partner";
+  const creator = getStoredUser() || "Partner";
   if (!title) return;
   try {
     await apiRequest("/api/dates", {
@@ -296,31 +290,6 @@ async function handleAddDateSubmit(event) {
     await loadDates();
   } catch (err) {
     showToast(`Could not add date plan: ${err.message}`);
-  }
-}
-
-function openSettingsDialog() {
-  const dialog = document.getElementById("settings-dialog");
-  const input = document.getElementById("worker-url-input");
-  input.value = getWorkerUrl();
-  dialog.showModal();
-}
-
-function closeSettingsDialog() {
-  const dialog = document.getElementById("settings-dialog");
-  dialog.close();
-}
-
-function handleSaveSettings() {
-  const input = document.getElementById("worker-url-input");
-  const val = input.value.trim();
-  if (val) {
-    setWorkerUrl(val);
-    showToast("Worker API URL updated!");
-    closeSettingsDialog();
-    if (getToken()) {
-      loadDates();
-    }
   }
 }
 
@@ -336,10 +305,6 @@ function initEventHandlers() {
   document.getElementById("btn-roll-date").addEventListener("click", handleRollDate);
   document.getElementById("btn-quick-release").addEventListener("click", handleQuickRelease);
   document.getElementById("add-date-form").addEventListener("submit", handleAddDateSubmit);
-  document.getElementById("btn-open-settings").addEventListener("click", openSettingsDialog);
-  document.getElementById("btn-config-api-shortcut").addEventListener("click", openSettingsDialog);
-  document.getElementById("btn-close-settings").addEventListener("click", closeSettingsDialog);
-  document.getElementById("btn-save-settings").addEventListener("click", handleSaveSettings);
 }
 
 document.addEventListener("DOMContentLoaded", () => {

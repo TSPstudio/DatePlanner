@@ -19,9 +19,6 @@
         <span class="brand-title">Our Date Planner</span>
       </div>
       <div class="nav-actions">
-        <button id="btn-open-settings" class="icon-btn" title="API Settings" aria-label="API Settings">
-          ⚙️
-        </button>
         <div id="user-badge" class="user-badge hidden">
           <span class="user-icon" aria-hidden="true">🌸</span>
           <span id="user-name-display"></span>
@@ -54,19 +51,12 @@
             Enter Planner 💖
           </button>
         </form>
-
-        <div class="api-notice">
-          <button type="button" id="btn-config-api-shortcut" class="link-btn">
-            Configure Cloudflare Worker URL
-          </button>
-        </div>
       </section>
 
       <section id="app-section" class="app-views hidden">
         <div class="glass-card roll-hero-card text-center">
           <span class="hero-sparkle" aria-hidden="true">🎲</span>
           <h2 class="display-title">What should we do?</h2>
-          <p class="subtitle">Roll a random idea. Once chosen, it cools down for 2 weeks.</p>
 
           <button type="button" id="btn-roll-date" class="btn btn-roll">
             <span class="btn-roll-glow" aria-hidden="true"></span>
@@ -89,15 +79,9 @@
         <div class="glass-card add-card">
           <h2 class="section-title">✨ Add a New Date Idea</h2>
           <form id="add-date-form" class="add-form">
-            <div class="form-row">
-              <div class="form-group flex-grow">
-                <label for="new-date-title">Date Plan</label>
-                <input type="text" id="new-date-title" class="input-field" placeholder="e.g. Stargazing picnic with strawberries..." required>
-              </div>
-              <div class="form-group creator-group">
-                <label for="new-date-creator">Suggested By</label>
-                <input type="text" id="new-date-creator" class="input-field" placeholder="Your name">
-              </div>
+            <div class="form-group">
+              <label for="new-date-title">Date Plan</label>
+              <input type="text" id="new-date-title" class="input-field" placeholder="e.g. Stargazing picnic with strawberries..." required>
             </div>
             <button type="submit" id="btn-add-submit" class="btn btn-primary">
               + Add to Plans
@@ -132,25 +116,6 @@
         </div>
       </section>
     </main>
-
-    <dialog id="settings-dialog" class="glass-card settings-dialog">
-      <div class="dialog-content">
-        <div class="dialog-header">
-          <h3 class="section-title">Cloudflare Worker API Settings</h3>
-          <button type="button" id="btn-close-settings" class="icon-btn" aria-label="Close dialog">✕</button>
-        </div>
-        <p class="dialog-desc">
-          Enter the deployed Cloudflare Worker API URL (e.g. <code>https://date-planner-api.&lt;subdomain&gt;.workers.dev</code>).
-        </p>
-        <div class="form-group">
-          <label for="worker-url-input">Worker API Base URL</label>
-          <input type="url" id="worker-url-input" class="input-field" placeholder="https://date-planner-api.your-subdomain.workers.dev" required>
-        </div>
-        <div class="dialog-actions">
-          <button type="button" id="btn-save-settings" class="btn btn-primary">Save Settings</button>
-        </div>
-      </div>
-    </dialog>
   </div>
 
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
