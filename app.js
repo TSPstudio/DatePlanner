@@ -73,6 +73,7 @@ const TRANSLATIONS = {
     dateRemoved: "Date removed.",
     confirmDelete: "Are you sure you want to delete this date plan?",
     sessionExpired: "Session expired. Please log in again.",
+    allDatesCooldown: "All dates are on cooldown!",
   },
   es: {
     brandTitle: "Planificador de Citas",
@@ -116,6 +117,7 @@ const TRANSLATIONS = {
     dateRemoved: "Plan eliminado.",
     confirmDelete: "¿Seguro/a que deseas eliminar este plan de cita?",
     sessionExpired: "Sesión expirada. Por favor inicia sesión nuevamente.",
+    allDatesCooldown: "Todas las citas están en lista de espera!",
   },
 };
 
@@ -433,7 +435,7 @@ async function handleRollDate() {
   try {
     const res = await apiRequest("/api/dates/roll", { method: "POST" });
     if (res.status === "empty") {
-      showToast(res.message);
+      showToast(t("allDatesCooldown"));
       return;
     }
     displayRolledDate(res.date);
