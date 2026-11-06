@@ -5,10 +5,20 @@ export interface Env {
   USER1_PASSWORD?: string;
   USER2_NAME?: string;
   USER2_PASSWORD?: string;
+  USER3_NAME?: string;
+  USER3_PASSWORD?: string;
+  USER4_NAME?: string;
+  USER4_PASSWORD?: string;
+}
+
+export interface AuthUser {
+  username: string;
+  pairId: string;
 }
 
 export interface DateItem {
   id: string;
+  pair_id: string;
   title: string;
   creator: string;
   created_at: number;
@@ -40,11 +50,18 @@ const COOLDOWN_MS = COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
 const TOKEN_EXPIRY_DAYS = 30;
 const TOKEN_EXPIRY_MS = TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
 
+const PAIR_1 = "pair1";
+const PAIR_2 = "pair2";
+
 const FALLBACK_SECRET = "date-planner-default-secret-salt-key-2026";
 const FALLBACK_USER1_NAME = "Partner1";
 const FALLBACK_USER1_PASS = "love2026";
 const FALLBACK_USER2_NAME = "Partner2";
 const FALLBACK_USER2_PASS = "magic2026";
+const FALLBACK_USER3_NAME = "Partner3";
+const FALLBACK_USER3_PASS = "pair2passA";
+const FALLBACK_USER4_NAME = "Partner4";
+const FALLBACK_USER4_PASS = "pair2passB";
 
 function createCorsHeaders(): Headers {
   const headers = new Headers();
@@ -108,16 +125,16 @@ async function timingSafeEqualStrings(a: string, b: string): Promise<boolean> {
   return crypto.subtle.timingSafeEqual(hashA, hashB);
 }
 
-async function signToken(username: string, secret: string): Promise<string> {
+async function signToken(user: AuthUser, secret: string): Promise<string> {
   const expiry = Date.now() + TOKEN_EXPIRY_MS;
-  const payloadStr = JSON.stringify({ u: username, exp: expiry });
+  const payloadStr = JSON.stringify({ u: user.username, p: user.pairId, exp: expiry });
   const payloadB64 = btoa(payloadStr).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   const key = await getCryptoKey(secret);
   const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payloadB64));
   return `${payloadB64}.${bufferToBase64(signature)}`;
 }
 
-async function verifyToken(token: string, secret: string): Promise<string | null> {
+async function verifyToken(token: string, secret: string): Promise<AuthUser | null> {
   try {
     const parts = token.split(".");
     if (parts.length !== 2) return null;
@@ -126,48 +143,67 @@ async function verifyToken(token: string, secret: string): Promise<string | null
     const signatureBuffer = base64ToBuffer(signatureB64);
     const isValid = await crypto.subtle.verify("HMAC", key, signatureBuffer, new TextEncoder().encode(payloadB64));
     if (!isValid) return null;
-    const parsed = JSON.parse(atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"))) as { u: string; exp: number };
+    const parsed = JSON.parse(atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"))) as { u: string; p: string; exp: number };
     if (!parsed.u || !parsed.exp || parsed.exp < Date.now()) return null;
-    return parsed.u;
+    return { username: parsed.u, pairId: parsed.p || PAIR_1 };
   } catch (err) {
     return null;
   }
 }
 
-async function authenticateCredentials(payload: LoginPayload, env: Env): Promise<string | null> {
-  if (!payload.username || !payload.password) return null;
+async function authenticatePair1(user: string, pass: string, env: Env): Promise<AuthUser | null> {
   const u1Name = env.USER1_NAME || FALLBACK_USER1_NAME;
   const u1Pass = env.USER1_PASSWORD || FALLBACK_USER1_PASS;
   const u2Name = env.USER2_NAME || FALLBACK_USER2_NAME;
   const u2Pass = env.USER2_PASSWORD || FALLBACK_USER2_PASS;
 
-  const matchesUser1Name = await timingSafeEqualStrings(payload.username, u1Name);
-  const matchesUser1Pass = await timingSafeEqualStrings(payload.password, u1Pass);
-  if (matchesUser1Name && matchesUser1Pass) return u1Name;
+  const matchesUser1 = (await timingSafeEqualStrings(user, u1Name)) && (await timingSafeEqualStrings(pass, u1Pass));
+  if (matchesUser1) return { username: u1Name, pairId: PAIR_1 };
 
-  const matchesUser2Name = await timingSafeEqualStrings(payload.username, u2Name);
-  const matchesUser2Pass = await timingSafeEqualStrings(payload.password, u2Pass);
-  if (matchesUser2Name && matchesUser2Pass) return u2Name;
+  const matchesUser2 = (await timingSafeEqualStrings(user, u2Name)) && (await timingSafeEqualStrings(pass, u2Pass));
+  if (matchesUser2) return { username: u2Name, pairId: PAIR_1 };
 
   return null;
+}
+
+async function authenticatePair2(user: string, pass: string, env: Env): Promise<AuthUser | null> {
+  const u3Name = env.USER3_NAME || FALLBACK_USER3_NAME;
+  const u3Pass = env.USER3_PASSWORD || FALLBACK_USER3_PASS;
+  const u4Name = env.USER4_NAME || FALLBACK_USER4_NAME;
+  const u4Pass = env.USER4_PASSWORD || FALLBACK_USER4_PASS;
+
+  const matchesUser3 = (await timingSafeEqualStrings(user, u3Name)) && (await timingSafeEqualStrings(pass, u3Pass));
+  if (matchesUser3) return { username: u3Name, pairId: PAIR_2 };
+
+  const matchesUser4 = (await timingSafeEqualStrings(user, u4Name)) && (await timingSafeEqualStrings(pass, u4Pass));
+  if (matchesUser4) return { username: u4Name, pairId: PAIR_2 };
+
+  return null;
+}
+
+async function authenticateCredentials(payload: LoginPayload, env: Env): Promise<AuthUser | null> {
+  if (!payload.username || !payload.password) return null;
+  const pair1Result = await authenticatePair1(payload.username, payload.password, env);
+  if (pair1Result) return pair1Result;
+  return authenticatePair2(payload.username, payload.password, env);
 }
 
 async function handleLogin(request: Request, env: Env): Promise<Response> {
   try {
     const payload = (await request.json()) as LoginPayload;
-    const authenticatedUser = await authenticateCredentials(payload, env);
-    if (!authenticatedUser) {
+    const authUser = await authenticateCredentials(payload, env);
+    if (!authUser) {
       return jsonResponse({ error: "Invalid username or password" }, HTTP_UNAUTHORIZED);
     }
     const secret = env.AUTH_SECRET || FALLBACK_SECRET;
-    const token = await signToken(authenticatedUser, secret);
-    return jsonResponse({ token, username: authenticatedUser });
+    const token = await signToken(authUser, secret);
+    return jsonResponse({ token, username: authUser.username, pairId: authUser.pairId });
   } catch (err) {
     return jsonResponse({ error: "Invalid request payload" }, HTTP_BAD_REQUEST);
   }
 }
 
-async function extractAuthUser(request: Request, env: Env): Promise<string | null> {
+async function extractAuthUser(request: Request, env: Env): Promise<AuthUser | null> {
   const header = request.headers.get("Authorization");
   if (!header || !header.startsWith("Bearer ")) return null;
   const token = header.slice(7).trim();
@@ -175,11 +211,11 @@ async function extractAuthUser(request: Request, env: Env): Promise<string | nul
   return verifyToken(token, secret);
 }
 
-async function handleGetDates(env: Env): Promise<Response> {
+async function handleGetDates(env: Env, pairId: string): Promise<Response> {
   const now = Date.now();
   const result = await env.DB.prepare(
-    "SELECT id, title, creator, created_at, cooldown_until, roll_count FROM dates ORDER BY created_at DESC"
-  ).all<DateItem>();
+    "SELECT id, pair_id, title, creator, created_at, cooldown_until, roll_count FROM dates WHERE pair_id = ? ORDER BY created_at DESC"
+  ).bind(pairId).all<DateItem>();
 
   const allItems = result.results || [];
   const available: DateItem[] = [];
@@ -199,23 +235,24 @@ async function handleGetDates(env: Env): Promise<Response> {
   return jsonResponse({ available, coolingDown, total: allItems.length });
 }
 
-async function handleCreateDate(request: Request, env: Env, authUser: string): Promise<Response> {
+async function handleCreateDate(request: Request, env: Env, user: AuthUser): Promise<Response> {
   try {
     const payload = (await request.json()) as CreateDatePayload;
     const title = payload.title?.trim();
     if (!title) {
       return jsonResponse({ error: "Title is required" }, HTTP_BAD_REQUEST);
     }
-    const creator = payload.creator?.trim() || authUser;
+    const creator = payload.creator?.trim() || user.username;
     const id = crypto.randomUUID();
     const createdAt = Date.now();
 
     await env.DB.prepare(
-      "INSERT INTO dates (id, title, creator, created_at, cooldown_until, roll_count) VALUES (?, ?, ?, ?, NULL, 0)"
-    ).bind(id, title, creator, createdAt).run();
+      "INSERT INTO dates (id, pair_id, title, creator, created_at, cooldown_until, roll_count) VALUES (?, ?, ?, ?, ?, NULL, 0)"
+    ).bind(id, user.pairId, title, creator, createdAt).run();
 
     return jsonResponse({
       id,
+      pair_id: user.pairId,
       title,
       creator,
       created_at: createdAt,
@@ -233,11 +270,11 @@ function getRandomIndex(max: number): number {
   return randomArray[0] % max;
 }
 
-async function handleRollDate(env: Env): Promise<Response> {
+async function handleRollDate(env: Env, pairId: string): Promise<Response> {
   const now = Date.now();
   const availableResult = await env.DB.prepare(
-    "SELECT id, title, creator, created_at, cooldown_until, roll_count FROM dates WHERE cooldown_until IS NULL OR cooldown_until <= ?"
-  ).bind(now).all<DateItem>();
+    "SELECT id, pair_id, title, creator, created_at, cooldown_until, roll_count FROM dates WHERE pair_id = ? AND (cooldown_until IS NULL OR cooldown_until <= ?)"
+  ).bind(pairId, now).all<DateItem>();
 
   const available = availableResult.results || [];
   if (available.length === 0) {
@@ -253,8 +290,8 @@ async function handleRollDate(env: Env): Promise<Response> {
   const newRollCount = selected.roll_count + 1;
 
   await env.DB.prepare(
-    "UPDATE dates SET cooldown_until = ?, roll_count = ? WHERE id = ?"
-  ).bind(cooldownUntil, newRollCount, selected.id).run();
+    "UPDATE dates SET cooldown_until = ?, roll_count = ? WHERE id = ? AND pair_id = ?"
+  ).bind(cooldownUntil, newRollCount, selected.id, pairId).run();
 
   return jsonResponse({
     status: "rolled",
@@ -267,35 +304,35 @@ async function handleRollDate(env: Env): Promise<Response> {
   });
 }
 
-async function handleResetCooldown(id: string, env: Env): Promise<Response> {
+async function handleResetCooldown(id: string, env: Env, pairId: string): Promise<Response> {
   await env.DB.prepare(
-    "UPDATE dates SET cooldown_until = NULL WHERE id = ?"
-  ).bind(id).run();
+    "UPDATE dates SET cooldown_until = NULL WHERE id = ? AND pair_id = ?"
+  ).bind(id, pairId).run();
   return jsonResponse({ success: true, id });
 }
 
-async function handleDeleteDate(id: string, env: Env): Promise<Response> {
-  await env.DB.prepare("DELETE FROM dates WHERE id = ?").bind(id).run();
+async function handleDeleteDate(id: string, env: Env, pairId: string): Promise<Response> {
+  await env.DB.prepare("DELETE FROM dates WHERE id = ? AND pair_id = ?").bind(id, pairId).run();
   return jsonResponse({ success: true, id });
 }
 
-async function routeProtected(request: Request, env: Env, pathname: string, user: string): Promise<Response> {
+async function routeProtected(request: Request, env: Env, pathname: string, user: AuthUser): Promise<Response> {
   if (request.method === "GET" && pathname === "/api/dates") {
-    return handleGetDates(env);
+    return handleGetDates(env, user.pairId);
   }
   if (request.method === "POST" && pathname === "/api/dates") {
     return handleCreateDate(request, env, user);
   }
   if (request.method === "POST" && pathname === "/api/dates/roll") {
-    return handleRollDate(env);
+    return handleRollDate(env, user.pairId);
   }
   if (request.method === "POST" && pathname.startsWith("/api/dates/") && pathname.endsWith("/reset-cooldown")) {
     const id = pathname.slice("/api/dates/".length, -"/reset-cooldown".length);
-    return handleResetCooldown(id, env);
+    return handleResetCooldown(id, env, user.pairId);
   }
   if (request.method === "DELETE" && pathname.startsWith("/api/dates/")) {
     const id = pathname.slice("/api/dates/".length);
-    return handleDeleteDate(id, env);
+    return handleDeleteDate(id, env, user.pairId);
   }
   return jsonResponse({ error: "Endpoint not found" }, HTTP_NOT_FOUND);
 }

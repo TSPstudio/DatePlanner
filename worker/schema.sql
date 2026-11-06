@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS dates (
   id TEXT PRIMARY KEY,
+  pair_id TEXT NOT NULL DEFAULT 'pair1',
   title TEXT NOT NULL,
   creator TEXT NOT NULL,
   created_at INTEGER NOT NULL,
@@ -8,3 +9,4 @@ CREATE TABLE IF NOT EXISTS dates (
 );
 
 CREATE INDEX IF NOT EXISTS idx_dates_cooldown ON dates(cooldown_until);
+CREATE INDEX IF NOT EXISTS idx_dates_pair ON dates(pair_id);
