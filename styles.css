@@ -372,7 +372,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 0.75rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
   animation: slowSpin 14s linear infinite;
 }
 
