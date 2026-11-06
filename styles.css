@@ -323,6 +323,29 @@ body {
   font-size: 0.82rem;
 }
 
+.btn-lang {
+  padding: 0.35rem 0.65rem;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.lang-opt {
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+}
+
+.lang-opt.active {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.lang-sep {
+  color: var(--card-border);
+  font-size: 0.75rem;
+}
+
 .btn-block {
   width: 100%;
 }

@@ -1,5 +1,6 @@
 const STORAGE_KEY_TOKEN = "dateplanner_token";
 const STORAGE_KEY_USER = "dateplanner_user";
+const STORAGE_KEY_LANG = "dateplanner_lang";
 const WORKER_API_URL = "https://date-planner-api.mdm-tracker-backend.workers.dev";
 const TOAST_DURATION_MS = 3500;
 const PARTICLE_COUNT_DESKTOP = 22;
@@ -28,9 +29,133 @@ const PARTICLE_COLORS = [
   "#ce93d8",
 ];
 
+const TRANSLATIONS = {
+  en: {
+    brandTitle: "Our Date Planner",
+    logOut: "Log Out",
+    privateSpace: "Private Space",
+    loginSubtitle: "Please log in to manage our date plans",
+    usernameLabel: "Username",
+    usernamePh: "Enter username",
+    passwordLabel: "Password",
+    passwordPh: "Enter password",
+    enterPlanner: "Enter Planner",
+    whatShouldWeDo: "What should we do?",
+    rollDate: "Roll a Date Plan!",
+    todaysAdventure: "Today's Adventure",
+    suggestedBy: "Suggested by",
+    releaseWaitlistNow: "Release from waitlist now",
+    addDateIdea: "Add a New Date Idea",
+    datePlanLabel: "Date Plan",
+    datePlanPh: "e.g. Stargazing picnic with strawberries...",
+    addToPlans: "Add to Plans",
+    availableDates: "Available Dates",
+    emptyAvailable: "No date plans available yet. Add some above!",
+    waitlist: "Waitlist",
+    emptyWaitlist: "No dates on cooldown right now.",
+    ready: "Ready",
+    left: "left",
+    by: "By",
+    rolledTimes: "Rolled",
+    times: "time(s)",
+    release: "Release",
+    delete: "Delete",
+    welcomeBack: "Welcome back",
+    loggedOut: "Logged out",
+    dateRolled: "Date rolled! Have fun!",
+    dateReleased: "Date released from waitlist!",
+    datePlanAdded: "Date plan added!",
+    dateRemoved: "Date removed.",
+    confirmDelete: "Are you sure you want to delete this date plan?",
+    sessionExpired: "Session expired. Please log in again.",
+  },
+  es: {
+    brandTitle: "Nuestro Planificador",
+    logOut: "Cerrar sesión",
+    privateSpace: "Espacio Privado",
+    loginSubtitle: "Inicia sesión para gestionar nuestros planes",
+    usernameLabel: "Usuario",
+    usernamePh: "Ingresa tu usuario",
+    passwordLabel: "Contraseña",
+    passwordPh: "Ingresa tu contraseña",
+    enterPlanner: "Entrar al Planificador",
+    whatShouldWeDo: "¿Qué hacemos hoy?",
+    rollDate: "¡Elegir un Plan!",
+    todaysAdventure: "Aventura de Hoy",
+    suggestedBy: "Sugerido por",
+    releaseWaitlistNow: "Liberar de la lista de espera",
+    addDateIdea: "Agregar Nueva Idea",
+    datePlanLabel: "Plan de Cita",
+    datePlanPh: "ej. Picnic bajo las estrellas con fresas...",
+    addToPlans: "Agregar a Planes",
+    availableDates: "Planes Disponibles",
+    emptyAvailable: "Aún no hay planes disponibles. ¡Agrega uno arriba!",
+    waitlist: "Lista de Espera",
+    emptyWaitlist: "No hay planes en espera en este momento.",
+    ready: "Listo",
+    left: "restantes",
+    by: "Por",
+    rolledTimes: "Elegido",
+    times: "vez/veces",
+    release: "Liberar",
+    delete: "Eliminar",
+    welcomeBack: "¡Hola de nuevo",
+    loggedOut: "Sesión cerrada",
+    dateRolled: "¡Plan elegido! ¡A divertirse!",
+    dateReleased: "¡Plan liberado de la lista de espera!",
+    datePlanAdded: "¡Plan agregado!",
+    dateRemoved: "Plan eliminado.",
+    confirmDelete: "¿Seguro/a que deseas eliminar este plan de cita?",
+    sessionExpired: "Sesión expirada. Por favor inicia sesión nuevamente.",
+  },
+};
+
 const TRASH_ICON_SVG = '<svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
 
 let currentRolledDate = null;
+
+function getLang() {
+  return localStorage.getItem(STORAGE_KEY_LANG) || "en";
+}
+
+function t(key) {
+  const lang = getLang();
+  const dict = TRANSLATIONS[lang] || TRANSLATIONS.en;
+  return dict[key] || key;
+}
+
+function updateLangToggleUi() {
+  const current = getLang();
+  const enSpan = document.getElementById("lang-en");
+  const esSpan = document.getElementById("lang-es");
+  if (enSpan && esSpan) {
+    enSpan.classList.toggle("active", current === "en");
+    esSpan.classList.toggle("active", current === "es");
+  }
+}
+
+function applyStaticTranslations() {
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const key = el.getAttribute("data-i18n");
+    if (key) el.textContent = t(key);
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => {
+    const key = el.getAttribute("data-i18n-ph");
+    if (key) el.setAttribute("placeholder", t(key));
+  });
+}
+
+function applyTranslations() {
+  applyStaticTranslations();
+  updateLangToggleUi();
+  if (getToken()) loadDates();
+}
+
+function toggleLang() {
+  const next = getLang() === "en" ? "es" : "en";
+  localStorage.setItem(STORAGE_KEY_LANG, next);
+  applyTranslations();
+}
 
 function getToken() {
   return sessionStorage.getItem(STORAGE_KEY_TOKEN);
@@ -106,7 +231,7 @@ async function apiRequest(endpoint, options = {}) {
   if (response.status === 401) {
     clearSession();
     updateUiState();
-    throw new Error("Session expired. Please log in again.");
+    throw new Error(t("sessionExpired"));
   }
   if (!response.ok) {
     const errData = await response.json().catch(() => ({}));
@@ -116,11 +241,11 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 function formatRemainingTime(ms) {
-  if (ms <= 0) return "Ready";
+  if (ms <= 0) return t("ready");
   const days = Math.floor(ms / MS_PER_DAY);
   const hours = Math.floor((ms % MS_PER_DAY) / MS_PER_HOUR);
-  if (days > 0) return `${days}d ${hours}h left`;
-  return `${hours}h left`;
+  if (days > 0) return `${days}d ${hours}h ${t("left")}`;
+  return `${hours}h ${t("left")}`;
 }
 
 function updateUiState() {
@@ -165,7 +290,7 @@ async function handleLoginSubmit(event) {
     usernameInput.value = "";
     passwordInput.value = "";
     updateUiState();
-    showToast(`Welcome back, ${res.username}!`);
+    showToast(`${t("welcomeBack")}, ${res.username}!`);
   } catch (err) {
     errorBanner.textContent = err.message;
     errorBanner.classList.remove("hidden");
@@ -175,7 +300,7 @@ async function handleLoginSubmit(event) {
 function handleLogout() {
   clearSession();
   updateUiState();
-  showToast("Logged out");
+  showToast(t("loggedOut"));
 }
 
 async function loadDates() {
@@ -194,7 +319,7 @@ function renderAvailableList(items) {
   countBadge.textContent = String(items.length);
   container.innerHTML = "";
   if (items.length === 0) {
-    container.innerHTML = '<p class="empty-state">No date plans available yet. Add some above!</p>';
+    container.innerHTML = `<p class="empty-state">${escapeHtml(t("emptyAvailable"))}</p>`;
     return;
   }
   items.forEach(item => {
@@ -204,12 +329,12 @@ function renderAvailableList(items) {
       <div class="item-content">
         <span class="item-title">${escapeHtml(item.title)}</span>
         <div class="item-details">
-          <span>By ${escapeHtml(item.creator)}</span>
-          <span>• Rolled ${item.roll_count} time(s)</span>
+          <span>${escapeHtml(t("by"))} ${escapeHtml(item.creator)}</span>
+          <span>• ${escapeHtml(t("rolledTimes"))} ${item.roll_count} ${escapeHtml(t("times"))}</span>
         </div>
       </div>
       <div class="item-actions">
-        <button type="button" class="icon-btn btn-delete" data-id="${item.id}" title="Delete" aria-label="Delete">
+        <button type="button" class="icon-btn btn-delete" data-id="${item.id}" title="${escapeHtml(t("delete"))}" aria-label="${escapeHtml(t("delete"))}">
           ${TRASH_ICON_SVG}
         </button>
       </div>
@@ -225,7 +350,7 @@ function renderCooldownList(items) {
   countBadge.textContent = String(items.length);
   container.innerHTML = "";
   if (items.length === 0) {
-    container.innerHTML = '<p class="empty-state">No dates on cooldown right now.</p>';
+    container.innerHTML = `<p class="empty-state">${escapeHtml(t("emptyWaitlist"))}</p>`;
     return;
   }
   items.forEach(item => {
@@ -235,12 +360,14 @@ function renderCooldownList(items) {
       <div class="item-content">
         <span class="item-title">${escapeHtml(item.title)}</span>
         <div class="item-details">
-          <span>By ${escapeHtml(item.creator)}</span>
+          <span>${escapeHtml(t("by"))} ${escapeHtml(item.creator)}</span>
           <span class="cooldown-pill">${formatRemainingTime(item.remaining_ms || 0)}</span>
         </div>
       </div>
       <div class="item-actions">
-        <button type="button" class="btn btn-secondary btn-sm btn-release" data-id="${item.id}">Release</button>
+        <button type="button" class="btn btn-secondary btn-sm btn-release" data-id="${item.id}">
+          ${escapeHtml(t("release"))}
+        </button>
       </div>
     `;
     el.querySelector(".btn-release").addEventListener("click", () => releaseDate(item.id));
@@ -272,9 +399,9 @@ function displayRolledDate(date) {
   const titleEl = document.getElementById("rolled-title");
   const creatorEl = document.getElementById("rolled-creator");
   titleEl.textContent = date.title;
-  creatorEl.textContent = `Suggested by ${date.creator}`;
+  creatorEl.textContent = `${t("suggestedBy")} ${date.creator}`;
   resultCard.classList.remove("hidden");
-  showToast("Date rolled! Have fun!");
+  showToast(t("dateRolled"));
 }
 
 async function handleQuickRelease() {
@@ -288,7 +415,7 @@ async function handleQuickRelease() {
 async function releaseDate(id) {
   try {
     await apiRequest(`/api/dates/${id}/reset-cooldown`, { method: "POST" });
-    showToast("Date released from waitlist!");
+    showToast(t("dateReleased"));
     await loadDates();
   } catch (err) {
     showToast(`Could not release date: ${err.message}`);
@@ -296,10 +423,10 @@ async function releaseDate(id) {
 }
 
 async function deleteDate(id) {
-  if (!confirm("Are you sure you want to delete this date plan?")) return;
+  if (!confirm(t("confirmDelete"))) return;
   try {
     await apiRequest(`/api/dates/${id}`, { method: "DELETE" });
-    showToast("Date removed.");
+    showToast(t("dateRemoved"));
     await loadDates();
   } catch (err) {
     showToast(`Could not delete date: ${err.message}`);
@@ -318,7 +445,7 @@ async function handleAddDateSubmit(event) {
       body: JSON.stringify({ title, creator }),
     });
     titleInput.value = "";
-    showToast("Date plan added!");
+    showToast(t("datePlanAdded"));
     await loadDates();
   } catch (err) {
     showToast(`Could not add date plan: ${err.message}`);
@@ -332,6 +459,7 @@ function escapeHtml(str) {
 }
 
 function initEventHandlers() {
+  document.getElementById("btn-lang-toggle").addEventListener("click", toggleLang);
   document.getElementById("login-form").addEventListener("submit", handleLoginSubmit);
   document.getElementById("btn-logout").addEventListener("click", handleLogout);
   document.getElementById("btn-roll-date").addEventListener("click", handleRollDate);
@@ -342,5 +470,6 @@ function initEventHandlers() {
 document.addEventListener("DOMContentLoaded", () => {
   createFloatingParticles();
   initEventHandlers();
+  applyTranslations();
   updateUiState();
 });
