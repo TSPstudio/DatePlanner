@@ -67,6 +67,15 @@ body {
   user-select: none;
   pointer-events: none;
   will-change: transform, opacity;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.float-particle svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 6px rgba(244, 143, 177, 0.4));
 }
 
 @keyframes floatUp {
@@ -80,6 +89,37 @@ body {
     transform: translateY(-120vh) rotate(360deg) scale(1.1);
     opacity: 0;
   }
+}
+
+.ui-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  display: inline-block;
+  vertical-align: middle;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.ui-icon-sm {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.ui-icon-md {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.ui-icon-lg {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+
+.ui-icon-hero {
+  width: 3.2rem;
+  height: 3.2rem;
+  color: var(--accent);
+  filter: drop-shadow(0 0 12px rgba(244, 143, 177, 0.45));
 }
 
 .app-shell {
@@ -124,7 +164,10 @@ body {
 }
 
 .brand-icon {
-  font-size: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
 }
 
 .nav-actions {
@@ -144,6 +187,12 @@ body {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--accent);
+}
+
+.user-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-soft);
 }
 
 .main-content {
@@ -167,6 +216,9 @@ body {
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .subtitle {
@@ -185,10 +237,12 @@ body {
   width: 100%;
 }
 
-.section-emoji {
-  font-size: 2.5rem;
-  display: block;
-  margin-bottom: 0.5rem;
+.section-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  margin-bottom: 0.75rem;
 }
 
 .auth-form {
@@ -323,9 +377,10 @@ body {
 }
 
 .hero-sparkle {
-  font-size: 3rem;
-  display: block;
-  margin-bottom: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
   animation: pulseRotate 4s ease-in-out infinite;
 }
 
@@ -348,6 +403,9 @@ body {
   box-shadow: 0 8px 24px rgba(233, 30, 99, 0.35);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 
 .btn-roll:hover {
@@ -378,6 +436,10 @@ body {
   font-size: 1.3rem;
   color: var(--accent);
   margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
 }
 
 .rolled-title {
